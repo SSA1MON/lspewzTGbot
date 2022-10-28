@@ -1,5 +1,6 @@
 import sqlite3
 import time
+import math
 
 from telebot import types, TeleBot
 from config import TOKEN
@@ -9,6 +10,8 @@ from datetime import datetime
 bot = TeleBot(TOKEN)
 conn = sqlite3.connect('database.db', check_same_thread=False)
 cursor = conn.cursor()
+
+cur_month = datetime.now().strftime("%d-%B-%Y %H:%M").split('-')[1].lower()
 
 
 def db_table_val(month: str, perv: float, garant: float, holod: float,
@@ -35,7 +38,6 @@ def start(message):
     markup.add(btn1, btn2, btn3)
 
     user_id = message.from_user.id
-    cur_month = datetime.now().strftime("%d-%B-%Y %H:%M").split('-')[1].lower()
     db_table_val(month=cur_month, perv=0, garant=0, holod=0, artem=0, cleanmoney=0,
                  nonprofile=0, curbtn="None", usr_id=user_id)
     bot.send_message(message.chat.id,
@@ -57,7 +59,22 @@ def main(message, msg=None):
         markup.add(button1, button2, button3, button4, button5, button6)
         bot.send_message(chat_id=message.chat.id, text="Выбери нужную категорию:", reply_markup=markup)
     elif message.text == "Посмотреть ЗП" or msg == "Посмотреть ЗП":
-        bot.send_message(chat_id=message.chat.id, text="В разработке.")
+        markup = types.InlineKeyboardMarkup(row_width=2)
+        button1 = types.InlineKeyboardButton("Январь", callback_data=f'january|{user_id}')
+        button2 = types.InlineKeyboardButton("Февраль", callback_data=f'february|{user_id}')
+        button3 = types.InlineKeyboardButton("Март", callback_data=f'march|{user_id}')
+        button4 = types.InlineKeyboardButton("Апрель", callback_data=f'april|{user_id}')
+        button5 = types.InlineKeyboardButton("Май", callback_data=f'may|{user_id}')
+        button6 = types.InlineKeyboardButton("Июнь", callback_data=f'june|{user_id}')
+        button7 = types.InlineKeyboardButton("Июль", callback_data=f'july|{user_id}')
+        button8 = types.InlineKeyboardButton("Август", callback_data=f'august|{user_id}')
+        button9 = types.InlineKeyboardButton("Сентябрь", callback_data=f'september|{user_id}')
+        button10 = types.InlineKeyboardButton("Октябрь", callback_data=f'october|{user_id}')
+        button11 = types.InlineKeyboardButton("Ноябрь", callback_data=f'november|{user_id}')
+        button12 = types.InlineKeyboardButton("Декабрь", callback_data=f'december|{user_id}')
+        markup.add(button1, button2, button3, button4, button5, button6,
+                   button7, button8, button9, button10, button11, button12)
+        bot.send_message(chat_id=message.chat.id, text="Выбери месяц:", reply_markup=markup)
     elif message.text == "Начать новый месяц" or msg == "Начать новый месяц":
         bot.send_message(chat_id=message.chat.id, text="В разработке.")
     else:
@@ -100,17 +117,30 @@ def callback_inline(call):
                 DatabaseData(msg=call.message, btn="nonprofile", user=user_id).db_update_button()
                 bot.send_message(chat_id=call.message.chat.id, text="Введи сумму:")
                 bot.register_next_step_handler(message=call.message, callback=answer_handler)
+            elif call.data.startswith(('january', 'february', 'march', 'april', 'may', 'june',
+                                       'july', 'august', 'september', 'october', 'november', 'december')):
+                bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
+                total_salary = DatabaseData(msg=call.message,
+                                            user=user_id,
+                                            month=call.data.split('|')[0]
+                                            ).db_get_total_sum()
+                if total_salary is not None:
+                    bot.send_message(chat_id=call.message.chat.id,
+                                     text=f"Сумма за {call.data.split('|')[0]}: {total_salary} рублей.")
+                else:
+                    bot.send_message(chat_id=call.message.chat.id, text=f"💾 Нет данных")
     except Exception as ex:
         bot.send_message(call.message.chat.id, text=f"Ошибка: {ex}")
 
 
 class DatabaseData:
-    def __init__(self, msg, btn=None, user=None, summ=None, column=None):
+    def __init__(self, msg, btn=None, user=None, summ=None, column=None, month=None):
         self.message = msg
         self.button = btn
         self.user_id = user
         self.column = column
         self.calc_sum = summ
+        self.month = month
 
     def db_update_button(self):
         try:
@@ -132,10 +162,27 @@ class DatabaseData:
             bot.send_message(chat_id=self.message.chat.id, text=f"Что-то пошло не так при обращении к БД. {ex}")
 
     def add_sum(self):
-        cursor.execute(
-            f'UPDATE salary SET {self.column} = {self.column} + {self.calc_sum} WHERE usr_id = {self.user_id}'
-        )
-        conn.commit()
+        try:
+            cursor.execute(
+                f'UPDATE salary SET {self.column} = {self.column} + {self.calc_sum} WHERE usr_id = {self.user_id}'
+            )
+            conn.commit()
+        except Exception as ex:
+            bot.send_message(chat_id=self.message.chat.id, text=f"Что-то пошло не так при обращении к БД. {ex}")
+
+    def db_get_total_sum(self):
+        try:
+            cursor.execute(
+                f"SELECT s_pervichka, s_garant, s_holod, s_artem, s_cleanmoney, s_nonprofile"
+                f" FROM salary WHERE s_month = '{self.month}' AND usr_id = {self.user_id}"
+            )
+            db_data = cursor.fetchall()[0]
+            db_data = round(math.fsum(list(map(float, db_data))), 2)
+            return db_data
+        except IndexError:
+            return None
+        except Exception as ex:
+            bot.send_message(chat_id=self.message.chat.id, text=f"Что-то пошло не так при обращении к БД. {ex}")
 
 
 def answer_handler(message):
