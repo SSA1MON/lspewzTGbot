@@ -21,8 +21,7 @@ def start(message: telebot.types.Message) -> None:
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
     btn1 = types.KeyboardButton(buttons.add_cash)
     btn2 = types.KeyboardButton(buttons.check_salary)
-    btn3 = types.KeyboardButton(buttons.new_month)
-    markup.add(btn1, btn2, btn3)
+    markup.add(btn1, btn2)
 
     user_id = message.from_user.id
     func.db_table_val(month=func.cur_month, perv=0, garant=0, holod=0, artem=0, cleanmoney=0,
@@ -67,9 +66,6 @@ def main(message: telebot.types.Message, msg: str = None) -> None:
         markup.add(button1, button2, button3, button4, button5, button6,
                    button7, button8, button9, button10, button11, button12)
         bot.send_message(chat_id=message.chat.id, text="Выбери месяц:", reply_markup=markup)
-
-    elif message.text == buttons.new_month or msg == buttons.new_month:
-        bot.send_message(chat_id=message.chat.id, text="В разработке.")
 
     else:
         bot.send_message(message.chat.id, text=f"К сожалению я не смог распознать твою команду.")
