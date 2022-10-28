@@ -1,7 +1,10 @@
 import time
 import math
 
-from bot import cursor, conn, bot, main, cur_month
+from bot import cursor, conn, bot, main
+from datetime import datetime
+
+cur_month = datetime.now().strftime("%d-%B-%Y %H:%M").split('-')[1].lower()
 
 
 def db_table_val(month: str, perv: float, garant: float, holod: float,
@@ -50,8 +53,19 @@ class DatabaseData:
         except Exception as ex:
             bot.send_message(chat_id=self.message.chat.id, text=f"Что-то пошло не так при обращении к БД. {ex}")
 
+    def db_get_month_column(self):
+        cursor.execute(f"SELECT * FROM salary WHERE usr_id = {self.user_id}")
+        db_data = cursor.fetchall()
+        month_list = []
+        for i_month in db_data:
+            month_list.append(i_month[0])
+        if cur_month not in month_list:
+            db_table_val(month=cur_month, perv=0, garant=0, holod=0, artem=0, cleanmoney=0,
+                         nonprofile=0, curbtn="None", usr_id=self.user_id)
+
     def add_sum(self):
         try:
+            self.db_get_month_column()
             cursor.execute(
                 f"UPDATE salary SET {self.column} = {self.column} + {self.calc_sum} "
                 f"WHERE s_month = '{self.month}' AND usr_id = {self.user_id}"

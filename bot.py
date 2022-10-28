@@ -6,13 +6,10 @@ import func
 from telebot import types, TeleBot
 from config import TOKEN
 from time import sleep
-from datetime import datetime
 
 bot = TeleBot(TOKEN)
 conn = sqlite3.connect('database.db', check_same_thread=False)
 cursor = conn.cursor()
-
-cur_month = datetime.now().strftime("%d-%B-%Y %H:%M").split('-')[1].lower()
 
 
 @bot.message_handler(commands=['start'])
@@ -28,7 +25,7 @@ def start(message: telebot.types.Message) -> None:
     markup.add(btn1, btn2, btn3)
 
     user_id = message.from_user.id
-    func.db_table_val(month=cur_month, perv=0, garant=0, holod=0, artem=0, cleanmoney=0,
+    func.db_table_val(month=func.cur_month, perv=0, garant=0, holod=0, artem=0, cleanmoney=0,
                       nonprofile=0, curbtn="None", usr_id=user_id)
     bot.send_message(message.chat.id,
                      text=f"Wassup, <b>{message.from_user.first_name}</b>!\n",
