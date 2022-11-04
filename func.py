@@ -6,6 +6,12 @@ from datetime import datetime
 
 cur_month = datetime.now().strftime("%d-%B-%Y %H:%M").split('-')[1].lower()
 
+month_dict = {
+    'january': "январь", 'february': "февраль", 'march': 'март', 'april': "апрель", 'may': "май", 'june': "июнь",
+    'july': 'июль', 'august': 'август', 'september': "сентябрь", 'october': "октябрь", 'november': "ноябрь",
+    'december': "декабрь"
+}
+
 
 def db_table_val(month: str, perv: float, garant: float, holod: float,
                  artem: float, cleanmoney: float, nonprofile: float, curbtn: str, usr_id: int) -> None:
@@ -72,7 +78,8 @@ class DatabaseData:
             )
             conn.commit()
         except Exception as ex:
-            bot.send_message(chat_id=self.message.chat.id, text=f"Что-то пошло не так при обращении к БД. {ex}")
+            bot.send_message(chat_id=self.message.chat.id,
+                             text=f"Что-то пошло не так при обращении к БД.\nОшибка: {ex}")
 
     def db_get_total_sum(self):
         try:
@@ -81,12 +88,13 @@ class DatabaseData:
                 f" FROM salary WHERE s_month = '{self.month}' AND usr_id = {self.user_id}"
             )
             db_data = cursor.fetchall()[0]
-            db_data = round(math.fsum(list(map(float, db_data))), 2)
-            return db_data
+            total_sum = round(math.fsum(list(map(float, db_data))), 2)
+            return db_data, total_sum
         except IndexError:
             return None
         except Exception as ex:
-            bot.send_message(chat_id=self.message.chat.id, text=f"Что-то пошло не так при обращении к БД. {ex}")
+            bot.send_message(chat_id=self.message.chat.id,
+                             text=f"Что-то пошло не так при обращении к БД.\nОшибка: {ex}")
 
 
 def answer_handler(message):
@@ -165,4 +173,4 @@ def answer_handler(message):
             bot.send_message(chat_id=message.chat.id, text=f"Что-то пошло не так... Обратись к разрабу.")
     except Exception as ex:
         bot.send_message(chat_id=message.chat.id,
-                         text=f"Что-то пошло не так при введении суммы.\n\n{ex}")
+                         text=f"Что-то пошло не так при введении суммы.\nОшибка: {ex}")

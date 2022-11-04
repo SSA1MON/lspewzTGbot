@@ -123,8 +123,17 @@ def callback_inline(call: telebot.types.CallbackQuery) -> None:
                                                  month=call.data.split('|')[0]
                                                  ).db_get_total_sum()
                 if total_salary is not None:
+                    month = func.month_dict.get(call.data.split('|')[0], {}).upper()
                     bot.send_message(chat_id=call.message.chat.id,
-                                     text=f"Сумма за {call.data.split('|')[0]}: {total_salary} рублей.")
+                                     text=f"Цифры за <b>{month}:</b>\n\n"
+                                          f"<b>⚡ Первичка:</b>      {total_salary[0][0]}\n"
+                                          f"<b>⚡ Гарант:</b>        {total_salary[0][1]}\n"
+                                          f"<b>⚡ Холод:</b>     {total_salary[0][2]}\n"
+                                          f"<b>⚡ Артём:</b>     {total_salary[0][3]}\n"
+                                          f"<b>⚡ Чистые:</b>        {total_salary[0][4]}\n"
+                                          f"<b>⚡ Непрофиль:</b>     {total_salary[0][5]}\n\n"
+                                          f"<b>ИТОГО:</b>     {total_salary[1]} RUB",
+                                     parse_mode='html')
                 else:
                     bot.send_message(chat_id=call.message.chat.id, text=f"💾 Нет данных")
 
