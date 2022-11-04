@@ -97,75 +97,72 @@ def answer_handler(message):
     try:
         input_sum = float(message.text)
         if button == 'pervichka':
+            percent = 0
             if 0 < input_sum <= 2500:
-                calc_sum = input_sum * 0.25
-                DatabaseData(msg=message, user=user_id, summ=calc_sum, column='s_pervichka', month=cur_month).add_sum()
-                bot.send_message(chat_id=message.chat.id, text=f"25% суммы внесено")
+                input_sum *= 0.25
+                percent = 25
             elif 2500 < input_sum <= 4500:
-                calc_sum = input_sum * 0.30
-                DatabaseData(msg=message, user=user_id, summ=calc_sum, column='s_pervichka', month=cur_month).add_sum()
-                bot.send_message(chat_id=message.chat.id, text=f"30% суммы внесено")
+                input_sum *= 0.30
+                percent = 30
             elif 4500 < input_sum <= 7500:
-                calc_sum = input_sum * 0.35
-                DatabaseData(msg=message, user=user_id, summ=calc_sum, column='s_pervichka', month=cur_month).add_sum()
-                bot.send_message(chat_id=message.chat.id, text=f"35% суммы внесено")
+                input_sum *= 0.35
+                percent = 35
             elif 7500 < input_sum <= 10500:
-                calc_sum = input_sum * 0.40
-                DatabaseData(msg=message, user=user_id, summ=calc_sum, column='s_pervichka', month=cur_month).add_sum()
-                bot.send_message(chat_id=message.chat.id, text=f"40% суммы внесено")
+                input_sum *= 0.40
+                percent = 40
             elif 10500 < input_sum <= 17000:
-                calc_sum = input_sum * 0.45
-                DatabaseData(msg=message, user=user_id, summ=calc_sum, column='s_pervichka', month=cur_month).add_sum()
-                bot.send_message(chat_id=message.chat.id, text=f"45% суммы внесено")
+                input_sum *= 0.45
+                percent = 45
             elif input_sum > 17000:
-                calc_sum = input_sum * 0.50
-                DatabaseData(msg=message, user=user_id, summ=calc_sum, column='s_pervichka', month=cur_month).add_sum()
-                bot.send_message(chat_id=message.chat.id, text=f"50% суммы внесено")
+                input_sum *= 0.50
+                percent = 50
             else:
                 bot.send_message(chat_id=message.chat.id, text=f"Что-то у тебя с числом не так")
                 time.sleep(0.7)
                 main(message=message, msg="Добавить приход")
+            DatabaseData(msg=message, user=user_id, summ=input_sum, column='s_pervichka', month=cur_month).add_sum()
+            bot.send_message(chat_id=message.chat.id, text=f"Сумма {round(input_sum, 2)} ({percent}%) добавлена.")
         elif button == 'garant' or button == 'holod':
             column = None
+            percent = 0
             if button == 'garant':
                 column = 's_garant'
             elif button == 'holod':
                 column = 's_holod'
 
             if 0 < input_sum <= 10500:
-                calc_sum = input_sum * 0.50
-                DatabaseData(msg=message, user=user_id, summ=calc_sum, column=column, month=cur_month).add_sum()
-                bot.send_message(chat_id=message.chat.id, text=f"50% суммы внесено")
+                input_sum *= 0.50
+                percent = 50
             elif 10500 < input_sum <= 17000:
-                calc_sum = input_sum * 0.45
-                DatabaseData(msg=message, user=user_id, summ=calc_sum, column=column, month=cur_month).add_sum()
-                bot.send_message(chat_id=message.chat.id, text=f"45% суммы внесено")
+                input_sum *= 0.45
+                percent = 45
             elif input_sum > 17000:
-                calc_sum = input_sum * 0.50
-                DatabaseData(msg=message, user=user_id, summ=calc_sum, column=column, month=cur_month).add_sum()
-                bot.send_message(chat_id=message.chat.id, text=f"50% суммы внесено")
+                input_sum *= 0.50
+                percent = 50
+            DatabaseData(msg=message, user=user_id, summ=input_sum, column=column, month=cur_month).add_sum()
+            bot.send_message(chat_id=message.chat.id, text=f"Сумма {round(input_sum, 2)} ({percent}%) добавлена.")
         elif button == 'artem':
-            calc_sum = input_sum * 0.45
-            DatabaseData(msg=message, user=user_id, summ=calc_sum, column='s_artem', month=cur_month).add_sum()
-            bot.send_message(chat_id=message.chat.id, text=f"45% суммы внесено")
+            input_sum *= 0.45
+            DatabaseData(msg=message, user=user_id, summ=input_sum, column='s_artem', month=cur_month).add_sum()
+            bot.send_message(chat_id=message.chat.id, text=f"Сумма {round(input_sum, 2)} (45%) добавлена.")
         elif button == 'cleanmoney':
             DatabaseData(msg=message, user=user_id, summ=input_sum, column='s_cleanmoney', month=cur_month).add_sum()
-            bot.send_message(chat_id=message.chat.id, text=f"100% суммы внесено")
+            bot.send_message(chat_id=message.chat.id, text=f"Сумма {round(input_sum, 2)} (100%) добавлена.")
         elif button == 'nonprofile':
+            percent = 0
             if 0 < input_sum <= 10500:
-                calc_sum = input_sum * 0.40
-                DatabaseData(msg=message, user=user_id, summ=calc_sum, column='s_nonprofile', month=cur_month).add_sum()
-                bot.send_message(chat_id=message.chat.id, text=f"40% суммы внесено")
+                input_sum *= 0.40
+                percent = 40
             elif 10500 < input_sum <= 17000:
-                calc_sum = input_sum * 0.45
-                DatabaseData(msg=message, user=user_id, summ=calc_sum, column='s_nonprofile', month=cur_month).add_sum()
-                bot.send_message(chat_id=message.chat.id, text=f"45% суммы внесено")
+                input_sum *= 0.45
+                percent = 45
             elif input_sum > 17000:
-                calc_sum = input_sum * 0.50
-                DatabaseData(msg=message, user=user_id, summ=calc_sum, column='s_nonprofile', month=cur_month).add_sum()
-                bot.send_message(chat_id=message.chat.id, text=f"50% суммы внесено")
+                input_sum *= 0.50
+                percent = 50
+            DatabaseData(msg=message, user=user_id, summ=input_sum, column='s_nonprofile', month=cur_month).add_sum()
+            bot.send_message(chat_id=message.chat.id, text=f"Сумма {round(input_sum, 2)} ({percent}%) добавлена.")
         else:
             bot.send_message(chat_id=message.chat.id, text=f"Что-то пошло не так... Обратись к разрабу.")
     except Exception as ex:
         bot.send_message(chat_id=message.chat.id,
-                         text=f"Что-то пошло не так при введении суммы\n{ex}")
+                         text=f"Что-то пошло не так при введении суммы.\n\n{ex}")
