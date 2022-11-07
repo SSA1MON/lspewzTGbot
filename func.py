@@ -1,8 +1,10 @@
 import time
 import math
 
+from typing import Union
 from bot import cursor, conn, bot, main
 from datetime import datetime
+from buttons import add_cash
 
 cur_month = datetime.now().strftime("%d-%B-%Y %H:%M").split('-')[1].lower()
 
@@ -16,7 +18,7 @@ month_dict = {
 def db_table_val(month: str, perv: float, garant: float, holod: float,
                  artem: float, cleanmoney: float, nonprofile: float, curbtn: str, usr_id: int) -> None:
     """
-    Функция. Создает таблицу в базе данных, если её нет и заполняет первоначальными данными.
+    Функция. Создает таблицу в базе данных, если её нет и заполняет первоначальными данными, которые подаются на вход.
     """
 
     cursor.execute(f'CREATE TABLE IF NOT EXISTS salary (s_month STRING, s_pervichka REAL, '
@@ -40,7 +42,8 @@ class DatabaseData:
         self.calc_sum = summ
         self.month = month
 
-    def db_update_button(self):
+    # функция, добавляющая в бд кнопку выбранную пользователем
+    def db_update_button(self) -> None:
         try:
             cursor.execute(
                 f'UPDATE salary SET s_curbtn = "{self.button}" WHERE usr_id = {self.user_id}'
@@ -49,7 +52,8 @@ class DatabaseData:
         except Exception as ex:
             bot.send_message(chat_id=self.message.chat.id, text=f"Что-то пошло не так при обновлении данных в БД. {ex}")
 
-    def db_get_button(self):
+    # функция получающая из бд информацию о кнопке выбранной пользователем
+    def db_get_button(self) -> tuple[str, int]:
         try:
             cursor.execute(
                 f"SELECT s_curbtn FROM salary WHERE usr_id = {self.user_id}"
@@ -59,7 +63,11 @@ class DatabaseData:
         except Exception as ex:
             bot.send_message(chat_id=self.message.chat.id, text=f"Что-то пошло не так при обращении к БД. {ex}")
 
-    def db_get_month_column(self):
+    # функция получающая информацию из бд об имеющихся записях месяцев у пользователя
+    def db_get_month_column(self) -> None:
+        global cur_month
+        cur_month = datetime.now().strftime("%d-%B-%Y %H:%M").split('-')[1].lower()
+
         cursor.execute(f"SELECT * FROM salary WHERE usr_id = {self.user_id}")
         db_data = cursor.fetchall()
         month_list = []
@@ -69,11 +77,12 @@ class DatabaseData:
             db_table_val(month=cur_month, perv=0, garant=0, holod=0, artem=0, cleanmoney=0,
                          nonprofile=0, curbtn="None", usr_id=self.user_id)
 
-    def add_sum(self):
+    # функция добавляющая вводимую пользователем сумму в бд
+    def add_sum(self) -> None:
         try:
             self.db_get_month_column()
             cursor.execute(
-                f"UPDATE salary SET {self.column} = {self.column} + {self.calc_sum} "
+                f"UPDATE salary SET {self.column} = {self.column} + {round(self.calc_sum, 2)} "
                 f"WHERE s_month = '{self.month}' AND usr_id = {self.user_id}"
             )
             conn.commit()
@@ -81,7 +90,8 @@ class DatabaseData:
             bot.send_message(chat_id=self.message.chat.id,
                              text=f"Что-то пошло не так при обращении к БД.\nОшибка: {ex}")
 
-    def db_get_total_sum(self):
+    # функция получающая записи сумм из бд и суммирует их
+    def db_get_total_sum(self) -> Union[tuple[tuple[float], float], None]:
         try:
             cursor.execute(
                 f"SELECT s_pervichka, s_garant, s_holod, s_artem, s_cleanmoney, s_nonprofile"
@@ -97,15 +107,20 @@ class DatabaseData:
                              text=f"Что-то пошло не так при обращении к БД.\nОшибка: {ex}")
 
 
-def answer_handler(message):
+def answer_handler(message) -> None:
     db_data = DatabaseData(msg=message, user=message.from_user.id).db_get_button()
     button = db_data[0]
     user_id = db_data[1]
 
+    column = ""
+    percent = 0
+
     try:
         input_sum = float(message.text)
+        float_sum = True
+
         if button == 'pervichka':
-            percent = 0
+            column = "s_pervichka"
             if 0 < input_sum <= 2500:
                 input_sum *= 0.25
                 percent = 25
@@ -124,15 +139,8 @@ def answer_handler(message):
             elif input_sum > 17000:
                 input_sum *= 0.50
                 percent = 50
-            else:
-                bot.send_message(chat_id=message.chat.id, text=f"Что-то у тебя с числом не так")
-                time.sleep(0.7)
-                main(message=message, msg="Добавить приход")
-            DatabaseData(msg=message, user=user_id, summ=input_sum, column='s_pervichka', month=cur_month).add_sum()
-            bot.send_message(chat_id=message.chat.id, text=f"Сумма {round(input_sum, 2)} ({percent}%) добавлена.")
+
         elif button == 'garant' or button == 'holod':
-            column = None
-            percent = 0
             if button == 'garant':
                 column = 's_garant'
             elif button == 'holod':
@@ -147,17 +155,18 @@ def answer_handler(message):
             elif input_sum > 17000:
                 input_sum *= 0.50
                 percent = 50
-            DatabaseData(msg=message, user=user_id, summ=input_sum, column=column, month=cur_month).add_sum()
-            bot.send_message(chat_id=message.chat.id, text=f"Сумма {round(input_sum, 2)} ({percent}%) добавлена.")
+
         elif button == 'artem':
+            column = "s_artem"
             input_sum *= 0.45
-            DatabaseData(msg=message, user=user_id, summ=input_sum, column='s_artem', month=cur_month).add_sum()
-            bot.send_message(chat_id=message.chat.id, text=f"Сумма {round(input_sum, 2)} (45%) добавлена.")
+            percent = 45
+
         elif button == 'cleanmoney':
-            DatabaseData(msg=message, user=user_id, summ=input_sum, column='s_cleanmoney', month=cur_month).add_sum()
-            bot.send_message(chat_id=message.chat.id, text=f"Сумма {round(input_sum, 2)} (100%) добавлена.")
+            percent = 100
+            column = "s_cleanmoney"
+
         elif button == 'nonprofile':
-            percent = 0
+            column = "s_nonprofile"
             if 0 < input_sum <= 10500:
                 input_sum *= 0.40
                 percent = 40
@@ -167,10 +176,23 @@ def answer_handler(message):
             elif input_sum > 17000:
                 input_sum *= 0.50
                 percent = 50
-            DatabaseData(msg=message, user=user_id, summ=input_sum, column='s_nonprofile', month=cur_month).add_sum()
-            bot.send_message(chat_id=message.chat.id, text=f"Сумма {round(input_sum, 2)} ({percent}%) добавлена.")
+
         else:
             bot.send_message(chat_id=message.chat.id, text=f"Что-то пошло не так... Обратись к разрабу.")
+
+        # проверка на то, что input_sum - число и больше нуля
+        if float_sum is True and input_sum > 0:
+            DatabaseData(msg=message, user=user_id, summ=input_sum, column=column, month=cur_month).add_sum()
+            bot.send_message(chat_id=message.chat.id,
+                             text=f"Сумма *{round(input_sum, 2)} RUB* ({percent}%) добавлена.",
+                             parse_mode='Markdown')
+        else:
+            bot.send_message(chat_id=message.chat.id, text="Что-то у тебя с числом не так")
+            time.sleep(0.7)
+            main(message=message, msg=add_cash)
+
     except Exception as ex:
         bot.send_message(chat_id=message.chat.id,
                          text=f"Что-то пошло не так при введении суммы.\nОшибка: {ex}")
+        time.sleep(0.7)
+        main(message=message, msg=add_cash)
