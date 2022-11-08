@@ -64,15 +64,19 @@ class DatabaseData:
             bot.send_message(chat_id=self.message.chat.id, text=f"Что-то пошло не так при обращении к БД. {ex}")
 
     # функция получающая информацию из бд об имеющихся записях месяцев у пользователя
-    def db_get_month_column(self) -> None:
+    # если записи нет, добавляет её
+    def db_month_column(self) -> None:
         global cur_month
         cur_month = datetime.now().strftime("%d-%B-%Y %H:%M").split('-')[1].lower()
 
         cursor.execute(f"SELECT * FROM salary WHERE usr_id = {self.user_id}")
         db_data = cursor.fetchall()
         month_list = []
+
         for i_month in db_data:
             month_list.append(i_month[0])
+
+        # cоздает таблицу с текущим месяцем в бд, если её нет
         if cur_month not in month_list:
             db_table_val(month=cur_month, perv=0, garant=0, holod=0, artem=0, cleanmoney=0,
                          nonprofile=0, curbtn="None", usr_id=self.user_id)
@@ -80,7 +84,7 @@ class DatabaseData:
     # функция добавляющая вводимую пользователем сумму в бд
     def add_sum(self) -> None:
         try:
-            self.db_get_month_column()
+            self.db_month_column()
             cursor.execute(
                 f"UPDATE salary SET {self.column} = {self.column} + {round(self.calc_sum, 2)} "
                 f"WHERE s_month = '{self.month}' AND usr_id = {self.user_id}"
@@ -183,9 +187,7 @@ def answer_handler(message) -> None:
         # проверка на то, что input_sum - число и больше нуля
         if float_sum is True and input_sum > 0:
             DatabaseData(msg=message, user=user_id, summ=input_sum, column=column, month=cur_month).add_sum()
-            bot.send_message(chat_id=message.chat.id,
-                             text=f"Сумма *{round(input_sum, 2)} RUB* ({percent}%) добавлена.",
-                             parse_mode='Markdown')
+            bot.send_message(chat_id=message.chat.id, text=f"Сумма *{round(input_sum, 2)} RUB* ({percent}%) добавлена.")
         else:
             bot.send_message(chat_id=message.chat.id, text="Что-то у тебя с числом не так")
             time.sleep(0.7)

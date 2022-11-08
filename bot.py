@@ -7,7 +7,7 @@ from telebot import types, TeleBot
 from config import TOKEN
 from time import sleep
 
-bot = TeleBot(TOKEN)
+bot = TeleBot(token=TOKEN, parse_mode='Markdown')
 conn = sqlite3.connect('database.db', check_same_thread=False)
 cursor = conn.cursor()
 
@@ -23,9 +23,13 @@ def start(message: telebot.types.Message) -> None:
     btn2 = types.KeyboardButton(buttons.check_salary)
     markup.add(btn1, btn2)
 
-    user_id = message.from_user.id
-    func.db_table_val(month=func.cur_month, perv=0, garant=0, holod=0, artem=0, cleanmoney=0,
-                      nonprofile=0, curbtn="None", usr_id=user_id)
+    bot.set_my_commands([
+        telebot.types.BotCommand("/start", "Перезапуск бота")
+    ])
+
+    # создает таблицу в бд, если её нет
+    func.DatabaseData(msg=message, user=message.from_user.id).db_month_column()
+
     bot.send_message(message.chat.id,
                      text=f"Wassup, <b>{message.from_user.first_name}</b>!\n",
                      reply_markup=markup, parse_mode='html')
