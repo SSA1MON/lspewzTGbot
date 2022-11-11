@@ -8,7 +8,7 @@ from config import TOKEN
 from time import sleep
 
 bot = TeleBot(token=TOKEN, parse_mode='Markdown')
-conn = sqlite3.connect('database.db', check_same_thread=False)
+conn = sqlite3.connect(database='database.db', check_same_thread=False)
 cursor = conn.cursor()
 
 
@@ -19,30 +19,27 @@ def start(message: telebot.types.Message) -> None:
     """
 
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
-    btn1 = types.KeyboardButton(buttons.add_cash)
-    btn2 = types.KeyboardButton(buttons.check_salary)
+    btn1 = types.KeyboardButton(text=buttons.add_cash)
+    btn2 = types.KeyboardButton(text=buttons.check_salary)
     markup.add(btn1, btn2)
 
-    bot.set_my_commands([
-        telebot.types.BotCommand("/start", "Перезапуск бота")
-    ])
+    # создает дополнительную кнопку меню
+    bot.set_my_commands([telebot.types.BotCommand("/start", "Перезапуск бота")])
 
     # создает таблицу в бд, если её нет
     func.DatabaseData(msg=message, user=message.from_user.id).db_month_column()
 
-    bot.send_message(message.chat.id,
-                     text=f"Wassup, <b>{message.from_user.first_name}</b>!\n",
-                     reply_markup=markup, parse_mode='html')
+    bot.send_message(chat_id=message.chat.id, text=f"Wassup, *{message.from_user.first_name}*!", reply_markup=markup)
 
 
 @bot.message_handler(content_types=['text'])
-def main(message: telebot.types.Message, msg: str = None) -> None:
+def main(message: telebot.types.Message) -> None:
     """
     Функция обработчик. Обрабатывает команды от кнопок в меню, при начале диалога с ботом (/start)
     """
 
     user_id = message.from_user.id
-    if message.text == buttons.add_cash or msg == buttons.add_cash:
+    if message.text == buttons.add_cash:
         markup = types.InlineKeyboardMarkup(row_width=2)
         button1 = types.InlineKeyboardButton("Первичка", callback_data=f'{buttons.pervichka}|{user_id}')
         button2 = types.InlineKeyboardButton("Гарантия", callback_data=f'{buttons.garant}|{user_id}')
@@ -51,9 +48,9 @@ def main(message: telebot.types.Message, msg: str = None) -> None:
         button5 = types.InlineKeyboardButton("Чистые деньги", callback_data=f'{buttons.clean_money}|{user_id}')
         button6 = types.InlineKeyboardButton("Непрофиль", callback_data=f'{buttons.non_profile}|{user_id}')
         markup.add(button1, button2, button3, button4, button5, button6)
-        bot.send_message(chat_id=message.chat.id, text="Выбери нужную категорию:", reply_markup=markup)
+        bot.send_message(chat_id=message.chat.id, text="Выбери нужную категорию 👇", reply_markup=markup)
 
-    elif message.text == buttons.check_salary or msg == buttons.check_salary:
+    elif message.text == buttons.check_salary:
         markup = types.InlineKeyboardMarkup(row_width=2)
         button1 = types.InlineKeyboardButton("Январь", callback_data=f'january|{user_id}')
         button2 = types.InlineKeyboardButton("Февраль", callback_data=f'february|{user_id}')
@@ -69,10 +66,10 @@ def main(message: telebot.types.Message, msg: str = None) -> None:
         button12 = types.InlineKeyboardButton("Декабрь", callback_data=f'december|{user_id}')
         markup.add(button1, button2, button3, button4, button5, button6,
                    button7, button8, button9, button10, button11, button12)
-        bot.send_message(chat_id=message.chat.id, text="Выбери месяц:", reply_markup=markup)
+        bot.send_message(chat_id=message.chat.id, text="Выбери месяц 👇", reply_markup=markup)
 
     else:
-        bot.send_message(message.chat.id, text=f"К сожалению я не смог распознать твою команду.")
+        bot.send_message(message.chat.id, text="К сожалению я не смог распознать твою команду.")
 
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -81,68 +78,52 @@ def callback_inline(call: telebot.types.CallbackQuery) -> None:
     Функция обработчик. Обрабатывает запросы от кнопок из функции main().
     """
     try:
+        month = call.data.split('|')[0]
         user_id = call.data.split('|')[1]
         if call.message:
-            if call.data.startswith(buttons.pervichka):
-                bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
-                func.DatabaseData(msg=call.message, btn=buttons.pervichka, user=user_id).db_update_button()
-                bot.send_message(chat_id=call.message.chat.id, text="Введи сумму:")
-                bot.register_next_step_handler(message=call.message, callback=func.answer_handler)
+            bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
 
-            elif call.data.startswith(buttons.garant):
-                bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
-                func.DatabaseData(msg=call.message, btn=buttons.garant, user=user_id).db_update_button()
-                bot.send_message(chat_id=call.message.chat.id, text="Введи сумму:")
-                bot.register_next_step_handler(message=call.message, callback=func.answer_handler)
+            if call.data.startswith(('january', 'february', 'march', 'april', 'may', 'june', 'july', 'august',
+                                     'september', 'october', 'november', 'december')):
+                total_salary = func.DatabaseData(msg=call.message, user=user_id, month=month).db_get_total_sum()
 
-            elif call.data.startswith(buttons.holod):
-                bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
-                func.DatabaseData(msg=call.message, btn=buttons.holod, user=user_id).db_update_button()
-                bot.send_message(chat_id=call.message.chat.id, text="Введи сумму:")
-                bot.register_next_step_handler(message=call.message, callback=func.answer_handler)
-
-            elif call.data.startswith(buttons.artem):
-                bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
-                func.DatabaseData(msg=call.message, btn=buttons.artem, user=user_id).db_update_button()
-                bot.send_message(chat_id=call.message.chat.id, text="Введи сумму:")
-                bot.register_next_step_handler(message=call.message, callback=func.answer_handler)
-
-            elif call.data.startswith(buttons.clean_money):
-                bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
-                func.DatabaseData(msg=call.message, btn=buttons.clean_money, user=user_id).db_update_button()
-                bot.send_message(chat_id=call.message.chat.id, text="Введи сумму:")
-                bot.register_next_step_handler(message=call.message, callback=func.answer_handler)
-
-            elif call.data.startswith(buttons.non_profile):
-                bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
-                func.DatabaseData(msg=call.message, btn=buttons.non_profile, user=user_id).db_update_button()
-                bot.send_message(chat_id=call.message.chat.id, text="Введи сумму:")
-                bot.register_next_step_handler(message=call.message, callback=func.answer_handler)
-
-            elif call.data.startswith(('january', 'february', 'march', 'april', 'may', 'june',
-                                       'july', 'august', 'september', 'october', 'november', 'december')):
-                bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
-                total_salary = func.DatabaseData(msg=call.message,
-                                                 user=user_id,
-                                                 month=call.data.split('|')[0]
-                                                 ).db_get_total_sum()
                 if total_salary is not None:
-                    month = func.month_dict.get(call.data.split('|')[0], {}).upper()
+                    month = func.month_dict.get(month, {})
                     bot.send_message(chat_id=call.message.chat.id,
-                                     text=f"Цифры за <b>{month}:</b>\n\n"
-                                          f"<b>⚡ Первичка:</b>      {total_salary[0][0]}\n"
-                                          f"<b>⚡ Гарант:</b>        {total_salary[0][1]}\n"
-                                          f"<b>⚡ Холод:</b>     {total_salary[0][2]}\n"
-                                          f"<b>⚡ Артём:</b>     {total_salary[0][3]}\n"
-                                          f"<b>⚡ Чистые:</b>        {total_salary[0][4]}\n"
-                                          f"<b>⚡ Непрофиль:</b>     {total_salary[0][5]}\n\n"
-                                          f"<b>ИТОГО:</b>     {total_salary[1]} RUB",
-                                     parse_mode='html')
+                                     text=f"Цифры за *{month.upper()}:*\n\n"
+                                          f"*⚡ Первичка:*        {total_salary[0][0]}\n"
+                                          f"*⚡ Гарант:*        {total_salary[0][1]}\n"
+                                          f"*⚡ Холод:*     {total_salary[0][2]}\n"
+                                          f"*⚡ Артём:*     {total_salary[0][3]}\n"
+                                          f"*⚡ Чистые:*        {total_salary[0][4]}\n"
+                                          f"*⚡ Непрофиль:*     {total_salary[0][5]}\n\n"
+                                          f"*ИТОГО:*     {total_salary[1]} RUB")
                 else:
-                    bot.send_message(chat_id=call.message.chat.id, text=f"💾 Нет данных")
+                    bot.send_message(chat_id=call.message.chat.id, text="💾 Нет данных")
+
+                return None
+
+            selected_button = None
+            bot.send_message(chat_id=call.message.chat.id, text="Введи сумму 👇")
+
+            if call.data.startswith(buttons.pervichka):
+                selected_button = buttons.pervichka
+            elif call.data.startswith(buttons.garant):
+                selected_button = buttons.garant
+            elif call.data.startswith(buttons.holod):
+                selected_button = buttons.holod
+            elif call.data.startswith(buttons.artem):
+                selected_button = buttons.artem
+            elif call.data.startswith(buttons.clean_money):
+                selected_button = buttons.clean_money
+            elif call.data.startswith(buttons.non_profile):
+                selected_button = buttons.non_profile
+
+            func.DatabaseData(msg=call.message, btn=selected_button, user=user_id).db_update_button()
+            bot.register_next_step_handler(message=call.message, callback=func.answer_handler)
 
     except Exception as ex:
-        bot.send_message(call.message.chat.id, text=f"Ошибка: {ex}")
+        bot.send_message(chat_id=call.message.chat.id, text=f"Ошибка в callback_inline: {ex}")
 
 
 if __name__ == '__main__':
