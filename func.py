@@ -7,7 +7,7 @@ from typing import Union
 from bot import cursor, conn, bot, main, types
 from datetime import datetime
 
-cur_month = datetime.now().strftime("%d-%B-%Y %H:%M").split('-')[1].lower()
+cur_month = datetime.now().strftime("%B").lower()
 
 month_dict = {
     'january': "январь", 'february': "февраль", 'march': 'март', 'april': "апрель", 'may': "май", 'june': "июнь",
@@ -116,22 +116,6 @@ class DatabaseData:
         except Exception as ex:
             bot.send_message(chat_id=self.message.chat.id, text=self.err_text + str(ex))
 
-    # получает значение категории пользователя из БД
-    def db_get_class(self) -> Union[str, None]:
-        """
-        Функция. Получает значение категории (классе) пользователя из БД в текущем месяце.
-
-        Returns:
-            current_class (str): Информация о текущей категории (классе) из БД.
-        """
-
-        try:
-            cursor.execute(f"SELECT s_class FROM [{self.user_id}] WHERE s_month = '{cur_month}'")
-            current_class = cursor.fetchall()[0][0]
-            return current_class
-        except Exception as ex:
-            bot.send_message(chat_id=self.message.chat.id, text=self.err_text + str(ex))
-
     def db_update_class(self) -> None:
         """
         Функция. Обновляет данные о категории (классе) в БД в текущем месяце.
@@ -148,6 +132,22 @@ class DatabaseData:
         except Exception as ex:
             bot.send_message(chat_id=self.message.chat.id, text=self.err_text + str(ex))
 
+    # получает значение категории пользователя из БД
+    def db_get_class(self) -> Union[str, None]:
+        """
+        Функция. Получает значение категории (классе) пользователя из БД в текущем месяце.
+
+        Returns:
+            current_class (str): Информация о текущей категории (классе) из БД.
+        """
+
+        try:
+            cursor.execute(f"SELECT s_class FROM [{self.user_id}] WHERE s_month = '{cur_month}'")
+            current_class = cursor.fetchall()[0][0]
+            return current_class
+        except Exception as ex:
+            bot.send_message(chat_id=self.message.chat.id, text=self.err_text + str(ex))
+
     def db_check_class(self) -> None:
         """
         Функция. Получает категорию (класс) пользователя из БД.
@@ -157,7 +157,7 @@ class DatabaseData:
             None
         """
 
-        db_data = self.db_average_sum()
+        db_data = self.db_calc_avg_sum()
         cur_class = db_data[0]     # текущая категория
         avg_sum = db_data[1]   # текущий средний чек
 
@@ -168,7 +168,7 @@ class DatabaseData:
             self.selected_class = buttons.class_a
             self.db_update_class()
 
-    def db_month_column(self) -> None:
+    def db_update_month_column(self) -> None:
         """
         Функция. Получает все записи s_month из БД. Проверяет наличие текущего месяца в полученном кортеже и
         если такогово нет, вызывает функцию db_table_val, в которой создается новая запись.
@@ -179,20 +179,20 @@ class DatabaseData:
         """
 
         global cur_month
-        cur_month = datetime.now().strftime("%d-%B-%Y %H:%M").split('-')[1].lower()
-        db_data = list()
+        cur_month = datetime.now().strftime("%B").lower()
+        month_list = list()
 
         try:
             cursor.execute(f"SELECT s_month FROM [{self.user_id}]")
             db_data = cursor.fetchall()
-            return db_data
+            month_list = [i[0] for i in db_data]
         except sqlite3.OperationalError:
             pass
 
-        if cur_month not in db_data:
+        if cur_month not in month_list:
             db_table_val(usr_id=self.user_id)
 
-    def add_sum(self) -> None:
+    def db_update_add_sum(self) -> None:
         """
         Функция. Вносит в БД значения введенные пользователем.
 
@@ -205,7 +205,7 @@ class DatabaseData:
         """
 
         try:
-            self.db_month_column()
+            self.db_update_month_column()
             count, original_sum = 0, 0
 
             # условия для подсчета среднего чека
@@ -247,7 +247,7 @@ class DatabaseData:
         except Exception as ex:
             bot.send_message(chat_id=self.message.chat.id, text=self.err_text + str(ex))
 
-    def db_average_sum(self) -> Union[tuple[str, float], None]:
+    def db_calc_avg_sum(self) -> Union[tuple[str, float], None]:
         """
         Функция. Высчитывает среднее значение в чеке по заданному условию.
 
@@ -281,7 +281,7 @@ class DatabaseData:
             bot.send_message(chat_id=self.message.chat.id, text=self.err_text + str(ex))
 
 
-def answer_handler(message) -> None:
+def answer_handler(message: types.Message) -> None:
     """
     Функция обработчик. Обрабатывает введённые суммы от пользователя.
 
@@ -381,6 +381,7 @@ def answer_handler(message) -> None:
 
         elif button == buttons.clean_money:
             percent = 100
+            calc_sum = input_sum
             column = "s_cleanmoney"
 
         elif button == buttons.non_profile:
@@ -408,17 +409,17 @@ def answer_handler(message) -> None:
 
         # проверка, что input_sum - число и больше нуля. Если верно, то внесение данных в бд.
         if float_sum is True and input_sum > 0:
-            DatabaseData(msg=message, user=user_id, summ=[input_sum, calc_sum], column=column).add_sum()
+            DatabaseData(msg=message, user=user_id, summ=[input_sum, calc_sum], column=column).db_update_add_sum()
             bot.send_message(chat_id=message.chat.id, text=f"Сумма *{round(calc_sum, 2)} RUB* ({percent}%) добавлена.")
         else:
             bot.send_message(chat_id=message.chat.id, text="Что-то у тебя с числом не так. Может быть оно меньше нуля?")
-            time.sleep(0.7)
+            time.sleep(secs=0.7)
             message.text = buttons.add_cash
             main(message=message)
 
     except Exception:
         bot.send_message(chat_id=message.chat.id,
                          text="Что-то пошло не так при обработке введенных данных, либо это не число.")
-        time.sleep(0.7)
+        time.sleep(secs=0.7)
         message.text = buttons.add_cash
         main(message=message)

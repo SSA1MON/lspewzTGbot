@@ -33,7 +33,7 @@ def start(message: telebot.types.Message) -> None:
     # создает дополнительную кнопку меню
     bot.set_my_commands([telebot.types.BotCommand("/start", "Перезапуск бота")])
     # создает таблицу в бд, если её нет
-    func.DatabaseData(msg=message, user=message.from_user.id).db_month_column()
+    func.DatabaseData(msg=message, user=message.from_user.id).db_update_month_column()
     bot.send_message(chat_id=message.chat.id, text=f"Wassup, *{message.from_user.first_name}*!", reply_markup=markup)
 
 
@@ -80,7 +80,7 @@ def main(message: telebot.types.Message) -> None:
 
     elif message.text == buttons.average_receipt:
         func.DatabaseData(msg=message, user=user_id).db_check_class()
-        data = func.DatabaseData(msg=message, user=user_id).db_average_sum()
+        data = func.DatabaseData(msg=message, user=user_id).db_calc_avg_sum()
         bot.send_message(
             chat_id=message.chat.id,
             text=f"Твоя текущая категория — _{data[0]}_\n\nТвой текущий средний чек:   *{data[1]} RUB*"
@@ -96,7 +96,7 @@ def callback_inline(call: telebot.types.CallbackQuery) -> None:
     Функция обработчик. Обрабатывает запросы от кнопок из функции main().
 
     Parameters:
-        call (telebot.types.CallbackQuery): Класс библиотеки telebot. Получает данные от inline кнопок.
+        call (telebot.types.CallbackQuery): Cлужебная переменная библиотеки telebot. Получает данные от inline кнопок.
 
     Returns:
         None
@@ -120,8 +120,7 @@ def callback_inline(call: telebot.types.CallbackQuery) -> None:
                 return None
 
             # алгоритм inline кнопок внутри "Посмотреть ЗП"
-            elif call.data.startswith(('january', 'february', 'march', 'april', 'may', 'june', 'july', 'august',
-                                       'september', 'october', 'november', 'december')):
+            elif value in func.month_dict.keys():
                 total_salary = func.DatabaseData(msg=call.message, user=user_id, month=value).db_get_total_sum()
 
                 if total_salary is not None:
@@ -137,24 +136,23 @@ def callback_inline(call: telebot.types.CallbackQuery) -> None:
                                           f"*ИТОГО:*     {total_salary[1]} RUB")
                 else:
                     bot.send_message(chat_id=call.message.chat.id, text="💾 Нет данных")
-
                 return None
 
             # добавляет выбранную пользователем inline кнопку в БД из "Добавить приход"
             selected_button = None
             bot.send_message(chat_id=call.message.chat.id, text="Введи сумму 👇")
 
-            if call.data.startswith(buttons.pervichka):
+            if value == buttons.pervichka:
                 selected_button = buttons.pervichka
-            elif call.data.startswith(buttons.garant):
+            elif value == buttons.garant:
                 selected_button = buttons.garant
-            elif call.data.startswith(buttons.holod):
+            elif value == buttons.holod:
                 selected_button = buttons.holod
-            elif call.data.startswith(buttons.artem):
+            elif value == buttons.artem:
                 selected_button = buttons.artem
-            elif call.data.startswith(buttons.clean_money):
+            elif value == buttons.clean_money:
                 selected_button = buttons.clean_money
-            elif call.data.startswith(buttons.non_profile):
+            elif value == buttons.non_profile:
                 selected_button = buttons.non_profile
 
             func.DatabaseData(msg=call.message, btn=selected_button, user=user_id).db_update_button()
