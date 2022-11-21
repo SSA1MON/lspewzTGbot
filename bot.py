@@ -5,6 +5,7 @@ import func
 
 from telebot import types, TeleBot
 from config import TOKEN
+from settings_dict import month_dict
 from time import sleep
 
 bot = TeleBot(token=TOKEN, parse_mode='Markdown')
@@ -87,7 +88,7 @@ def main(message: telebot.types.Message) -> None:
         )
 
     else:
-        bot.send_message(message.chat.id, text="К сожалению я не смог распознать твою команду.")
+        bot.send_message(chat_id=message.chat.id, text="К сожалению я не смог распознать твою команду.")
 
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -120,11 +121,11 @@ def callback_inline(call: telebot.types.CallbackQuery) -> None:
                 return None
 
             # алгоритм inline кнопок внутри "Посмотреть ЗП"
-            elif value in func.month_dict.keys():
+            elif value in month_dict.keys():
                 total_salary = func.DatabaseData(msg=call.message, user=user_id, month=value).db_get_total_sum()
 
                 if total_salary is not None:
-                    month = func.month_dict.get(value, {})
+                    month = month_dict.get(value, {})
                     bot.send_message(chat_id=call.message.chat.id,
                                      text=f"Цифры за *{month.upper()}:*\n\n"
                                           f"*⚡ Первичка:*        {total_salary[0][0]}\n"
@@ -155,7 +156,7 @@ def callback_inline(call: telebot.types.CallbackQuery) -> None:
             elif value == buttons.non_profile:
                 selected_button = buttons.non_profile
 
-            func.DatabaseData(msg=call.message, btn=selected_button, user=user_id).db_update_button()
+            func.DatabaseData(msg=call.message, button=selected_button, user=user_id).db_update_button()
             bot.register_next_step_handler(message=call.message, callback=func.answer_handler)
 
     except Exception as ex:

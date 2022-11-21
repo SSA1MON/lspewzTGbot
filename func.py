@@ -1,19 +1,14 @@
 import sqlite3
 import time
 import math
-import buttons
+import buttons as btn
 
 from typing import Union
 from bot import cursor, conn, bot, main, types
+from settings_dict import percent_rates
 from datetime import datetime
 
 cur_month = datetime.now().strftime("%B").lower()
-
-month_dict = {
-    'january': "январь", 'february': "февраль", 'march': 'март', 'april': "апрель", 'may': "май", 'june': "июнь",
-    'july': 'июль', 'august': 'август', 'september': "сентябрь", 'october': "октябрь", 'november': "ноябрь",
-    'december': "декабрь"
-}
 
 
 def db_table_val(usr_id: int) -> None:
@@ -57,7 +52,7 @@ class DatabaseData:
         db_update_class(): Обновляет данные о категории (классе) в БД в текущем месяце.
         db_check_class(): Проверяет средний чек и категорию. Обновляет данные о категории в БД на актуальные.
     """
-    def __init__(self, msg: types.Message, btn: str = None, user: Union[str, int] = None,
+    def __init__(self, msg: types.Message, button: str = None, user: Union[str, int] = None,
                  month: str = None, summ: list[float, float] = None, column: str = None,
                  cls: str = None) -> None:
         """
@@ -65,7 +60,7 @@ class DatabaseData:
 
         Parameters:
             msg (telebot.types.Message): Служебная переменная библиотеки telebot.
-            btn (str): Текущая выбранная пользователем inline кнопка.
+            button (str): Текущая выбранная пользователем inline кнопка.
             user (str/int): Идентификатор пользователя.
             month (str): Месяц, выбранный пользователем. Используется для просмотра ЗП по месяцам.
             summ (list): Список чисел [float, float]. Введённое пользователем и высчитанный чистый процент.
@@ -77,13 +72,13 @@ class DatabaseData:
         """
 
         self.message = msg
-        self.button = btn
+        self.button = button
         self.user_id = user
         self.column = column
         self.calc_sum = summ
         self.month = month
         self.selected_class = cls
-        self.err_text = f"Что-то пошло не так при обращении к БД.\nОшибка: "
+        self.err_text = f"⚠ Что-то пошло не так при обращении к БД.\nОшибка: "
 
     def db_update_button(self) -> None:
         """
@@ -99,20 +94,19 @@ class DatabaseData:
         except Exception as ex:
             bot.send_message(chat_id=self.message.chat.id, text=self.err_text + str(ex))
 
-    def db_get_button(self) -> Union[tuple[str, int], None]:
+    def db_get_button(self) -> Union[tuple[str], None]:
         """
         Функция. Получает из БД данные об inline кнопке, выбранной пользователем в текущем месяце и
         возвращает кортеж значений.
 
         Returns:
             current_button (str): Наименование inline кнопки
-            self.user_id (int): Идентификатор пользователя
         """
 
         try:
             cursor.execute(f"SELECT s_curbtn FROM [{self.user_id}] WHERE s_month = '{cur_month}'")
             current_button = cursor.fetchall()[0][0]
-            return current_button, self.user_id
+            return current_button
         except Exception as ex:
             bot.send_message(chat_id=self.message.chat.id, text=self.err_text + str(ex))
 
@@ -161,11 +155,11 @@ class DatabaseData:
         cur_class = db_data[0]     # текущая категория
         avg_sum = db_data[1]   # текущий средний чек
 
-        if avg_sum <= 5500 and cur_class == buttons.class_a:
-            self.selected_class = buttons.class_b
+        if avg_sum <= 5500 and cur_class == btn.class_a:
+            self.selected_class = btn.class_b
             self.db_update_class()
-        elif avg_sum > 5500 and cur_class == buttons.class_b:
-            self.selected_class = buttons.class_a
+        elif avg_sum > 5500 and cur_class == btn.class_b:
+            self.selected_class = btn.class_a
             self.db_update_class()
 
     def db_update_month_column(self) -> None:
@@ -208,10 +202,15 @@ class DatabaseData:
             self.db_update_month_column()
             count, original_sum = 0, 0
 
-            # условия для подсчета среднего чека
+            # условия внесения данных для подсчета среднего чека
             if self.column in ['s_pervichka', 's_garant', 's_holod']:
                 if self.column == 's_pervichka':
                     count = 1
+                elif self.calc_sum[0] > 10500 and self.column in ['s_garant', 's_holod']:
+                    count = 1
+                original_sum = self.calc_sum[0]
+            elif self.calc_sum[0] > 7500 and self.column == 's_nonprofile':
+                count = 1
                 original_sum = self.calc_sum[0]
 
             cursor.execute(
@@ -281,6 +280,42 @@ class DatabaseData:
             bot.send_message(chat_id=self.message.chat.id, text=self.err_text + str(ex))
 
 
+def calc_salary(user_sum: float, user_btn: str, user_class: str) -> Union[tuple[float, str, str], None]:
+    """
+    Функция. Считает процент от введенной суммы пользователем.
+    Получает из словаря название колонки и проценты в зависимости от категории (класса)
+    пользователя, считает процент и возвращает результат.
+
+    Parameters:
+        user_sum (float): Число полученное от пользователя.
+        user_btn (str): Название кнопки выбранной пользователем.
+        user_class (str): Текущая категория (класс) пользователя.
+
+    Returns:
+        calc_num (float): Результат деления суммы на процент от категории и кнопки пользователя.
+        rate (int): Процент, используемый для текстового вывода.
+        column (str): Название колонки в базе данных для внесения результата.
+    """
+    try:
+        column = percent_rates.get(user_class).get(user_btn).get('column_name')
+        rate_dict = percent_rates.get(user_class).get(user_btn).get('rate')
+        rate_keys = list(rate_dict.keys())
+        rate = rate_dict.get(rate_keys[-1], {}) if user_sum >= rate_keys[-1] else None
+
+        if rate is None:
+            for i in rate_keys:
+                if user_sum <= i:
+                    rate = rate_dict.get(i, {})
+                    break
+                else:
+                    continue
+
+        calc_num = user_sum * (rate / 100)
+        return calc_num, rate, column
+    except Exception:
+        pass
+
+
 def answer_handler(message: types.Message) -> None:
     """
     Функция обработчик. Обрабатывает введённые суммы от пользователя.
@@ -292,134 +327,42 @@ def answer_handler(message: types.Message) -> None:
         None
     """
 
-    db_data = DatabaseData(msg=message, user=message.from_user.id).db_get_button()
-    button = db_data[0]
-    user_id = db_data[1]
-
-    current_class = DatabaseData(msg=message, user=user_id).db_get_class()
-    column = ""
-    percent = 0
+    user_id = message.from_user.id
+    current_class = str(DatabaseData(msg=message, user=user_id).db_get_class())  # получение инфы о категории из бд
+    button = str(DatabaseData(msg=message, user=user_id).db_get_button())  # получение инфы о кнопке из бд
+    input_sum = message.text
+    column, percent, calc_sum = str(), 0, 0
+    float_sum = False
 
     try:
         input_sum = float(message.text)
-        calc_sum = 0
         float_sum = True
+    except ValueError:
+        bot.send_message(
+            chat_id=message.chat.id,
+            text="❌ Что-то пошло не так при обработке введённых данных. Может быть это не число?"
+        )
+        time.sleep(0.7)
+        message.text = btn.add_cash
+        main(message=message)
 
-        if button == buttons.pervichka:
-            column = "s_pervichka"
-            if 0 < input_sum <= 2500:
-                if current_class == buttons.class_a:
-                    calc_sum = input_sum * .25
-                    percent = 25
-                elif current_class == buttons.class_b:
-                    calc_sum = input_sum * .2
-                    percent = 20
-            elif 2500 < input_sum <= 4500:
-                if current_class == buttons.class_a:
-                    calc_sum = input_sum * .3
-                    percent = 30
-                elif current_class == buttons.class_b:
-                    calc_sum = input_sum * .25
-                    percent = 25
-            elif 4500 < input_sum <= 7500:
-                if current_class == buttons.class_a:
-                    calc_sum = input_sum * .35
-                    percent = 35
-                elif current_class == buttons.class_b:
-                    calc_sum = input_sum * .3
-                    percent = 30
-            elif 7500 < input_sum <= 10500:
-                if current_class == buttons.class_a:
-                    calc_sum = input_sum * .4
-                    percent = 40
-                elif current_class == buttons.class_b:
-                    calc_sum = input_sum * .35
-                    percent = 35
-            elif 10500 < input_sum <= 17000:
-                if current_class == buttons.class_a:
-                    calc_sum = input_sum * .45
-                    percent = 45
-                elif current_class == buttons.class_b:
-                    calc_sum = input_sum * .4
-                    percent = 40
-            elif input_sum > 17000:
-                if current_class == buttons.class_a:
-                    calc_sum = input_sum * .5
-                    percent = 50
-                elif current_class == buttons.class_b:
-                    calc_sum = input_sum * .45
-                    percent = 45
-
-        elif button in [buttons.garant, buttons.holod]:
-            if button == buttons.garant:
-                column = 's_garant'
-            elif button == buttons.holod:
-                column = 's_holod'
-
-            if 0 < input_sum <= 10500:
-                calc_sum = input_sum * .5
-                percent = 50
-            elif 10500 < input_sum <= 17000:
-                if current_class == buttons.class_a:
-                    calc_sum = input_sum * .45
-                    percent = 45
-                elif current_class == buttons.class_b:
-                    calc_sum = input_sum * .4
-                    percent = 40
-            elif input_sum > 17000:
-                if current_class == buttons.class_a:
-                    calc_sum = input_sum * .5
-                    percent = 50
-                elif current_class == buttons.class_b:
-                    calc_sum = input_sum * .45
-                    percent = 45
-
-        elif button == buttons.artem:
-            column = "s_artem"
-            calc_sum = input_sum * .45
-            percent = 45
-
-        elif button == buttons.clean_money:
-            percent = 100
-            calc_sum = input_sum
-            column = "s_cleanmoney"
-
-        elif button == buttons.non_profile:
-            column = "s_nonprofile"
-            if 0 < input_sum <= 10500:
-                calc_sum = input_sum * .4
-                percent = 40
-            elif 10500 < input_sum <= 17000:
-                if current_class == buttons.class_a:
-                    calc_sum = input_sum * .45
-                    percent = 45
-                elif current_class == buttons.class_b:
-                    calc_sum = input_sum * .4
-                    percent = 40
-            elif input_sum > 17000:
-                if current_class == buttons.class_a:
-                    calc_sum = input_sum * .5
-                    percent = 50
-                elif current_class == buttons.class_b:
-                    calc_sum = input_sum * .45
-                    percent = 45
-
+    if button in [btn.pervichka, btn.garant, btn.holod, btn.artem, btn.clean_money, btn.non_profile]:
+        result = calc_salary(user_sum=input_sum, user_btn=button, user_class=current_class)
+        if result is not None:
+            column = result[2]
+            calc_sum = result[0]
+            percent = result[1]
         else:
-            bot.send_message(chat_id=message.chat.id, text="Что-то пошло не так... Обратись к разрабу.")
+            return
+    else:
+        bot.send_message(chat_id=message.chat.id, text="⚠ Что-то пошло не так... Обратись к разрабу.")
 
-        # проверка, что input_sum - число и больше нуля. Если верно, то внесение данных в бд.
-        if float_sum is True and input_sum > 0:
-            DatabaseData(msg=message, user=user_id, summ=[input_sum, calc_sum], column=column).db_update_add_sum()
-            bot.send_message(chat_id=message.chat.id, text=f"Сумма *{round(calc_sum, 2)} RUB* ({percent}%) добавлена.")
-        else:
-            bot.send_message(chat_id=message.chat.id, text="Что-то у тебя с числом не так. Может быть оно меньше нуля?")
-            time.sleep(secs=0.7)
-            message.text = buttons.add_cash
-            main(message=message)
-
-    except Exception:
-        bot.send_message(chat_id=message.chat.id,
-                         text="Что-то пошло не так при обработке введенных данных, либо это не число.")
-        time.sleep(secs=0.7)
-        message.text = buttons.add_cash
+    # проверка, что input_sum - число и больше нуля. Если верно, то внесение данных в бд.
+    if float_sum is True and input_sum > 0:
+        DatabaseData(msg=message, user=user_id, summ=[input_sum, calc_sum], column=column).db_update_add_sum()
+        bot.send_message(chat_id=message.chat.id, text=f"✅ Сумма *{round(calc_sum, 2)} RUB* ({percent}%) добавлена.")
+    else:
+        bot.send_message(chat_id=message.chat.id, text="❌ Что-то у тебя с числом не так. Может быть оно меньше нуля?")
+        time.sleep(0.7)
+        message.text = btn.add_cash
         main(message=message)
