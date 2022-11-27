@@ -1,9 +1,14 @@
-from buttons import pervichka, garant, holod, artem, clean_money, non_profile, class_a, class_b
+from buttons import pervichka, garant, holod, zayavochka, clean_money, non_profile, class_a, class_b
 
 month_dict = {
     'january': "январь", 'february': "февраль", 'march': 'март', 'april': "апрель", 'may': "май", 'june': "июнь",
     'july': 'июль', 'august': 'август', 'september': "сентябрь", 'october': "октябрь", 'november': "ноябрь",
     'december': "декабрь"
+}
+
+category_dict = {
+    'pervichka': "первичка", 'garant': "гарантия", 'holod': "холод", 'zayavochka': "заявочка", 
+    'cleanmoney': "чистые деньги", 'nonprofile': "непрофиль"
 }
 
 percent_rates = {
@@ -20,8 +25,8 @@ percent_rates = {
             "column_name": "s_" + holod,
             "rate": {10500: 50, 17000: 45, 17001: 50},
         },
-        artem: {
-            "column_name": "s_" + artem,
+        zayavochka: {
+            "column_name": "s_" + zayavochka,
             "rate": {0: 45},
         },
         clean_money: {
@@ -46,8 +51,8 @@ percent_rates = {
             "column_name": "s_" + holod,
             "rate": {10500: 50, 17000: 40, 17001: 45},
         },
-        artem: {
-            "column_name": "s_" + artem,
+        zayavochka: {
+            "column_name": "s_" + zayavochka,
             "rate": {0: 45},
         },
         clean_money: {
