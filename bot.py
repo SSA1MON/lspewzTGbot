@@ -20,7 +20,6 @@ def start(message: telebot.types.Message) -> None:
 
     Parameters:
         message (telebot.types.Message): Служебная переменная библиотеки telebot.
-
     Returns:
         None
     """
@@ -46,7 +45,6 @@ def main(message: telebot.types.Message) -> None:
 
     Parameters:
         message (telebot.types.Message): Служебная переменная библиотеки telebot.
-
     Returns:
         None
     """
@@ -94,7 +92,8 @@ def main(message: telebot.types.Message) -> None:
         )
 
     else:
-        func.write_log(user_id=user_id, func_name=main.__name__, text="Ошибка распознования команды. Исполнен else")
+        func.write_log(user_id=user_id, func_name=main.__name__,
+                       text=f"Ошибка распознования команды. Исполнен else. Введено: {message.text}")
         bot.send_message(chat_id=message.chat.id, text="К сожалению я не смог распознать твою команду.")
 
 
@@ -105,7 +104,6 @@ def callback_inline(call: telebot.types.CallbackQuery) -> None:
 
     Parameters:
         call (telebot.types.CallbackQuery): Cлужебная переменная библиотеки telebot. Получает данные от inline кнопок.
-
     Returns:
         None
     """

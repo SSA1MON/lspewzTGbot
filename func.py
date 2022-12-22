@@ -2,9 +2,10 @@ import sqlite3
 import os
 import time
 import math
+import telebot
 import buttons as btn
 
-from typing import Union, Optional
+from typing import Optional
 from bot import cursor, conn, bot, main, types
 from settings_dict import percent_rates
 from datetime import datetime
@@ -14,12 +15,11 @@ cur_month = datetime.now().strftime("%B").lower()
 
 def db_table_val(usr_id: int) -> None:
     """
-    Функция. Создает таблицу в базе данных, если её нет и
+    Функция создания записей в БД. Создает таблицу в базе данных, если её нет и
     заполняет дефолтными первоначальными данными, либо которые подаются на вход.
 
     Parameters:
         usr_id (int): Идентификатор пользователя
-
     Returns:
          None
     """
@@ -46,7 +46,7 @@ def db_table_val(usr_id: int) -> None:
 
 class DatabaseData:
     """
-    Класс. Представляющий работу с базой данных.
+    Класс представляющий работу с базой данных.
 
     Methods:
         db_update_button(): Обновляет информацию в БД о выбранной кнопке пользователем.
@@ -55,9 +55,17 @@ class DatabaseData:
         db_update_class(): Обновляет данные о категории (классе) в БД в текущем месяце.
         db_check_class(): Проверяет средний чек и категорию. Обновляет данные о категории в БД на актуальные.
     """
-    def __init__(self, msg: types.Message, button: str = None, user: Union[str, int] = None,
-                 month: str = None, summ: list[float, float] = None, column: str = None,
-                 cls: str = None) -> None:
+
+    def __init__(
+            self,
+            msg: types.Message,
+            button: Optional[str] = None,
+            user: Optional[str, int] = None,
+            month: Optional[str] = None,
+            summ: Optional[list[float, float]] = None,
+            column: Optional[str] = None,
+            cls: Optional[str] = None
+    ) -> None:
         """
         Создает все необходимые атрибуты для объекта DatabaseData.
 
@@ -69,7 +77,6 @@ class DatabaseData:
             summ (list): Список чисел [float, float]. Введённое пользователем и высчитанный чистый процент.
             column (str): Наименование столбца в БД. Используется для указания вводимых данных в БД.
             cls (str): Выбранная пользователем категория (класс).
-
         Returns:
             None
         """
@@ -85,7 +92,7 @@ class DatabaseData:
 
     def db_update_button(self) -> None:
         """
-        Функция. Обновляет в БД данные о выбранной пользователем inline кнопке в текущем месяце.
+        Функция для работы с БД. Обновляет в БД данные о выбранной пользователем inline кнопке в текущем месяце.
 
         Returns:
             None
@@ -100,10 +107,10 @@ class DatabaseData:
             write_log(user_id=self.user_id, func_name=self.db_update_button.__name__, text=self.err_text + str(ex))
             bot.send_message(chat_id=self.message.chat.id, text=self.err_text + str(ex))
 
-    def db_get_button(self) -> Union[tuple[str], None]:
+    def db_get_button(self) -> Optional[tuple[str]]:
         """
-        Функция. Получает из БД данные об inline кнопке, выбранной пользователем в текущем месяце и
-        возвращает кортеж значений.
+        Функция для работы с БД. Получает из БД данные об inline кнопке, выбранной пользователем в
+        текущем месяце и возвращает кортеж значений.
 
         Returns:
             current_button (str): Наименование inline кнопки
@@ -121,7 +128,7 @@ class DatabaseData:
 
     def db_update_class(self) -> None:
         """
-        Функция. Обновляет данные о категории (классе) в БД в текущем месяце.
+        Функция для работы с БД. Обновляет данные о категории (классе) в БД в текущем месяце.
 
         Returns:
             None
@@ -139,9 +146,9 @@ class DatabaseData:
             bot.send_message(chat_id=self.message.chat.id, text=self.err_text + str(ex))
 
     # получает значение категории пользователя из БД
-    def db_get_class(self) -> Union[str, None]:
+    def db_get_class(self) -> Optional[str]:
         """
-        Функция. Получает значение категории (классе) пользователя из БД в текущем месяце.
+        Функция для работы с БД. Получает значение категории (классе) пользователя из БД в текущем месяце.
 
         Returns:
             current_class (str): Информация о текущей категории (классе) из БД.
@@ -159,7 +166,7 @@ class DatabaseData:
 
     def db_check_class(self) -> None:
         """
-        Функция. Получает категорию (класс) пользователя из БД.
+        Функция для работы с БД. Получает категорию (класс) пользователя из БД.
         Вызывает функцию db_update_class и изменяет категорию, если будут выполнены условия в теле функции.
 
         Returns:
@@ -179,8 +186,8 @@ class DatabaseData:
 
     def db_update_month_column(self) -> None:
         """
-        Функция. Получает все записи s_month из БД. Проверяет наличие текущего месяца в полученном кортеже и
-        если такогово нет, вызывает функцию db_table_val, в которой создается новая запись.
+        Функция для работы с БД. Получает все записи s_month из БД. Проверяет наличие текущего месяца в
+        полученном кортеже и если такогово нет, вызывает функцию db_table_val, в которой создается новая запись.
         Так же обновляет данные текущего месяца в глобальной переменной cur_month.
 
         Returns:
@@ -203,7 +210,7 @@ class DatabaseData:
 
     def db_update_add_sum(self) -> None:
         """
-        Функция. Вносит в БД значения введенные пользователем.
+        Функция для работы с БД. Вносит в БД значения введенные пользователем.
 
         Добавляет в выбранную пользователем колонку полученный аргумент содержащий число,
         прибавляет в счетчик заявок (s_count) единицу, если условие выполняется и вносит
@@ -234,16 +241,15 @@ class DatabaseData:
             )
             conn.commit()
             write_log(user_id=self.user_id, func_name=self.db_update_add_sum.__name__,
-                      text="Обновлены значения в БД.")
+                      text=f"Обновлены значения в БД. Добавлено {round(self.calc_sum[1], 2)} в {self.column}")
             self.db_check_class()
         except Exception as ex:
             write_log(user_id=self.user_id, func_name=self.db_update_add_sum.__name__, text=self.err_text + str(ex))
             bot.send_message(chat_id=self.message.chat.id, text=self.err_text + str(ex))
 
-    def db_get_total_sum(self) -> Union[tuple[tuple[float], float], None]:
+    def db_get_total_sum(self) -> Optional[tuple[tuple[float], float]]:
         """
-        Функция. Суммирует суммы пользователя находящихся в БД.
-
+        Функция для работы с БД. Суммирует суммы пользователя находящихся в БД.
         Получает все колонки с информацией о суммах из базы данных и суммирует их.
 
         Returns:
@@ -267,9 +273,9 @@ class DatabaseData:
             write_log(user_id=self.user_id, func_name=self.db_get_total_sum.__name__, text=self.err_text + str(ex))
             bot.send_message(chat_id=self.message.chat.id, text=self.err_text + str(ex))
 
-    def db_calc_avg_sum(self) -> Union[tuple[str, float], None]:
+    def db_calc_avg_sum(self) -> Optional[tuple[str, float]]:
         """
-        Функция. Высчитывает среднее значение в чеке по заданному условию.
+        Функция высчитывает среднее значение в чеке по заданному условию.
 
         Получает колонки текущего месяца из БД, которые учавствуют в подсчете среднего чека,
         категорию (класс) пользователя, количество заявок и исходную сумму из всех чеков.
@@ -336,7 +342,7 @@ def write_log(user_id: int, func_name: str, text: str) -> None:
 
 def calc_salary(user_id: int, user_sum: float, user_btn: str, user_class: str) -> Optional[tuple[float, str, str]]:
     """
-    Функция. Считает процент от введенной суммы пользователем.
+    Функция считает процент от введенной суммы пользователем.
     Получает из словаря название колонки и проценты в зависимости от категории (класса)
     пользователя, считает процент и возвращает результат.
 
@@ -345,7 +351,6 @@ def calc_salary(user_id: int, user_sum: float, user_btn: str, user_class: str) -
         user_sum (float): Число полученное от пользователя.
         user_btn (str): Название кнопки выбранной пользователем.
         user_class (str): Текущая категория (класс) пользователя.
-
     Returns:
         calc_num (float): Результат деления суммы на процент от категории и кнопки пользователя.
         rate (int): Процент, используемый для текстового вывода.
@@ -371,7 +376,19 @@ def calc_salary(user_id: int, user_sum: float, user_btn: str, user_class: str) -
         write_log(user_id=user_id, func_name=calc_salary.__name__, text=str(ex))
 
 
-def calc_zayavochka(message):
+def calc_zayavochka(message: telebot.types.Message) -> Optional[tuple[float, float, float]]:
+    """
+    Функция калькулятор для кнопки меню "ЗаявОЧКА".
+
+    Parameters:
+        message (telebot.types.Message): Служебная переменная библиотеки telebot.
+    Returns:
+        tuple(
+        calc_num (float): Высчитанный процент от суммы пользователя.
+        user_sum (float): Число полученное от пользователя.
+        user_percent (float): Число полученное от пользователя.
+        )
+    """
     try:
         message.text = message.text.split(' ')
         if len(message.text) > 2:
@@ -384,13 +401,12 @@ def calc_zayavochka(message):
         return
 
 
-def answer_handler(message: types.Message):
+def answer_handler(message: types.Message) -> None:
     """
     Функция обработчик. Обрабатывает введённые суммы от пользователя.
 
     Parameters:
         message (telebot.types.Message): Служебная переменная библиотеки telebot.
-
     Returns:
         None
     """
