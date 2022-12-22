@@ -1,11 +1,11 @@
 import sqlite3
 import telebot.types
-import buttons
+import buttons as btn
 import func
 
 from telebot import types, TeleBot
 from config import TOKEN
-from settings_dict import month_dict
+from settings_dict import month_dict, category_dict
 from time import sleep
 
 bot = TeleBot(token=TOKEN, parse_mode='Markdown')
@@ -20,17 +20,17 @@ def start(message: telebot.types.Message) -> None:
 
     Parameters:
         message (telebot.types.Message): Служебная переменная библиотеки telebot.
-
     Returns:
         None
     """
 
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    btn1 = types.KeyboardButton(text=buttons.check_salary)
-    btn2 = types.KeyboardButton(text=buttons.average_receipt)
-    btn3 = types.KeyboardButton(text=buttons.add_cash)
+    btn1 = types.KeyboardButton(text=btn.check_salary)
+    btn2 = types.KeyboardButton(text=btn.average_receipt)
+    btn3 = types.KeyboardButton(text=btn.add_cash)
     markup.add(btn1, btn2, btn3)
 
+    func.write_log(user_id=message.from_user.id, func_name=start.__name__, text="Начало работы с ботом")
     # создает дополнительную кнопку меню
     bot.set_my_commands([telebot.types.BotCommand("/start", "Перезапуск бота")])
     # создает таблицу в бд, если её нет
@@ -41,28 +41,31 @@ def start(message: telebot.types.Message) -> None:
 @bot.message_handler(content_types=['text'])
 def main(message: telebot.types.Message) -> None:
     """
-    Функция обработчик. Обрабатывает команды от кнопок в меню, при начале диалога с ботом (/start)
+    Функция обработчик сообщений. Обрабатывает команды от кнопок в меню, при начале диалога с ботом (/start)
 
     Parameters:
         message (telebot.types.Message): Служебная переменная библиотеки telebot.
-
     Returns:
         None
     """
 
     user_id = message.from_user.id
-    if message.text == buttons.add_cash:
+    if message.text == btn.add_cash:
+        func.write_log(user_id=message.from_user.id, func_name=main.__name__,
+                       text=f"Выбрана кнопка '{btn.add_cash}'")
         markup = types.InlineKeyboardMarkup(row_width=2)
-        btn1 = types.InlineKeyboardButton("Первичка", callback_data=f'{buttons.pervichka}|{user_id}')
-        btn2 = types.InlineKeyboardButton("Гарантия", callback_data=f'{buttons.garant}|{user_id}')
-        btn3 = types.InlineKeyboardButton("Холод", callback_data=f'{buttons.holod}|{user_id}')
-        btn4 = types.InlineKeyboardButton("Артём", callback_data=f'{buttons.artem}|{user_id}')
-        btn5 = types.InlineKeyboardButton("Чистые деньги", callback_data=f'{buttons.clean_money}|{user_id}')
-        btn6 = types.InlineKeyboardButton("Непрофиль", callback_data=f'{buttons.non_profile}|{user_id}')
+        btn1 = types.InlineKeyboardButton("Первичка", callback_data=f'{btn.pervichka}|{user_id}')
+        btn2 = types.InlineKeyboardButton("Гарантия", callback_data=f'{btn.garant}|{user_id}')
+        btn3 = types.InlineKeyboardButton("Холод", callback_data=f'{btn.holod}|{user_id}')
+        btn4 = types.InlineKeyboardButton("ЗаявОЧКА", callback_data=f'{btn.zayavochka}|{user_id}')
+        btn5 = types.InlineKeyboardButton("Чистые деньги", callback_data=f'{btn.clean_money}|{user_id}')
+        btn6 = types.InlineKeyboardButton("Непрофиль", callback_data=f'{btn.non_profile}|{user_id}')
         markup.add(btn1, btn2, btn3, btn4, btn5, btn6)
         bot.send_message(chat_id=message.chat.id, text="Выбери нужную категорию 👇", reply_markup=markup)
 
-    elif message.text == buttons.check_salary:
+    elif message.text == btn.check_salary:
+        func.write_log(user_id=message.from_user.id, func_name=main.__name__,
+                       text=f"Выбрана кнопка '{btn.check_salary}'")
         markup = types.InlineKeyboardMarkup(row_width=2)
         btn1 = types.InlineKeyboardButton("Январь", callback_data=f'january|{user_id}')
         btn2 = types.InlineKeyboardButton("Февраль", callback_data=f'february|{user_id}')
@@ -79,8 +82,9 @@ def main(message: telebot.types.Message) -> None:
         markup.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7, btn8, btn9, btn10, btn11, btn12)
         bot.send_message(chat_id=message.chat.id, text="Выбери месяц 👇", reply_markup=markup)
 
-    elif message.text == buttons.average_receipt:
-        func.DatabaseData(msg=message, user=user_id).db_check_class()
+    elif message.text == btn.average_receipt:
+        func.write_log(user_id=message.from_user.id, func_name=main.__name__,
+                       text=f"Выбрана кнопка '{btn.average_receipt}'")
         data = func.DatabaseData(msg=message, user=user_id).db_calc_avg_sum()
         bot.send_message(
             chat_id=message.chat.id,
@@ -88,6 +92,8 @@ def main(message: telebot.types.Message) -> None:
         )
 
     else:
+        func.write_log(user_id=user_id, func_name=main.__name__,
+                       text=f"Ошибка распознования команды. Исполнен else. Введено: {message.text}")
         bot.send_message(chat_id=message.chat.id, text="К сожалению я не смог распознать твою команду.")
 
 
@@ -98,7 +104,6 @@ def callback_inline(call: telebot.types.CallbackQuery) -> None:
 
     Parameters:
         call (telebot.types.CallbackQuery): Cлужебная переменная библиотеки telebot. Получает данные от inline кнопок.
-
     Returns:
         None
     """
@@ -106,58 +111,54 @@ def callback_inline(call: telebot.types.CallbackQuery) -> None:
     try:
         value = call.data.split('|')[0]
         user_id = call.data.split('|')[1]
+        selected_button = None
 
         if call.message:
             bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
 
-            # алгоритм inline кнопок выбора категории при /start
-            if value in ['cat_a', 'cat_b']:
-                category = None
-                if call.data.startswith('cat_a'):
-                    category = buttons.class_a
-                elif call.data.startswith('cat_b'):
-                    category = buttons.class_b
-                func.DatabaseData(msg=call.message, user=user_id, cls=category).db_update_class()
-                return None
-
             # алгоритм inline кнопок внутри "Посмотреть ЗП"
-            elif value in month_dict.keys():
+            if value in month_dict.keys():
                 total_salary = func.DatabaseData(msg=call.message, user=user_id, month=value).db_get_total_sum()
+                month = month_dict.get(value)
 
                 if total_salary is not None:
-                    month = month_dict.get(value, {})
+                    func.write_log(user_id=int(user_id), func_name=callback_inline.__name__,
+                                   text="Вывод зп за " + month.upper())
                     bot.send_message(chat_id=call.message.chat.id,
                                      text=f"Цифры за *{month.upper()}:*\n\n"
-                                          f"*⚡ Первичка:*        {total_salary[0][0]}\n"
-                                          f"*⚡ Гарант:*        {total_salary[0][1]}\n"
-                                          f"*⚡ Холод:*     {total_salary[0][2]}\n"
-                                          f"*⚡ Артём:*     {total_salary[0][3]}\n"
-                                          f"*⚡ Чистые:*        {total_salary[0][4]}\n"
-                                          f"*⚡ Непрофиль:*     {total_salary[0][5]}\n\n"
+                                          f"*⚡ Первичка:*            {total_salary[0][0]}\n"
+                                          f"*⚡ Гарантия:*             {total_salary[0][1]}\n"
+                                          f"*⚡ Холод:*                     {total_salary[0][2]}\n"
+                                          f"*⚡ ЗаявОЧКА:*            {total_salary[0][3]}\n"
+                                          f"*⚡ Чистые:*                   {total_salary[0][4]}\n"
+                                          f"*⚡ Непрофиль:*         {total_salary[0][5]}\n\n"
                                           f"*ИТОГО:*     {total_salary[1]} RUB")
                 else:
+                    func.write_log(user_id=int(user_id), func_name=callback_inline.__name__,
+                                   text="Нет данных за " + month.upper())
                     bot.send_message(chat_id=call.message.chat.id, text="💾 Нет данных")
                 return None
 
-            # добавляет выбранную пользователем inline кнопку в БД из "Добавить приход"
-            selected_button = None
-            bot.send_message(chat_id=call.message.chat.id, text="Введи сумму 👇")
+            msg_text = f"Введи сумму для _{category_dict.get(value).upper()}_ 👇"
 
-            if value == buttons.pervichka:
-                selected_button = buttons.pervichka
-            elif value == buttons.garant:
-                selected_button = buttons.garant
-            elif value == buttons.holod:
-                selected_button = buttons.holod
-            elif value == buttons.artem:
-                selected_button = buttons.artem
-            elif value == buttons.clean_money:
-                selected_button = buttons.clean_money
-            elif value == buttons.non_profile:
-                selected_button = buttons.non_profile
+            if value == btn.pervichka:
+                selected_button = btn.pervichka
+            elif value == btn.garant:
+                selected_button = btn.garant
+            elif value == btn.holod:
+                selected_button = btn.holod
+            elif value == btn.zayavochka:
+                selected_button = btn.zayavochka
+                msg_text = f"Введи сумму для _{category_dict.get(value).upper()}_\n(в формате: _сумма процент_) 👇"
+            elif value == btn.clean_money:
+                selected_button = btn.clean_money
+            elif value == btn.non_profile:
+                selected_button = btn.non_profile
+
+            msg = bot.send_message(call.message.chat.id, msg_text)
 
             func.DatabaseData(msg=call.message, button=selected_button, user=user_id).db_update_button()
-            bot.register_next_step_handler(message=call.message, callback=func.answer_handler)
+            bot.register_next_step_handler(msg, func.answer_handler)
 
     except Exception as ex:
         bot.send_message(chat_id=call.message.chat.id, text=f"Ошибка в callback_inline: {ex}")
