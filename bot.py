@@ -115,6 +115,8 @@ def callback_inline(call: telebot.types.CallbackQuery) -> None:
 
         if call.message:
             bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
+            # проверка существования записи текущего месяца в базе данных
+            func.DatabaseData(msg=call.message, user=user_id).db_update_month_column()
 
             # алгоритм inline кнопок внутри "Посмотреть ЗП"
             if value in month_dict.keys():

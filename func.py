@@ -60,7 +60,7 @@ class DatabaseData:
             self,
             msg: types.Message,
             button: Optional[str] = None,
-            user: Optional[str, int] = None,
+            user: Optional[str or int] = None,
             month: Optional[str] = None,
             summ: Optional[list[float, float]] = None,
             column: Optional[str] = None,
@@ -243,7 +243,7 @@ class DatabaseData:
             write_log(user_id=self.user_id, func_name=self.db_update_add_sum.__name__,
                       text=f"Обновлены значения в БД. Добавлено {round(self.calc_sum[1], 2)} в {self.column}")
             self.db_check_class()
-        except Exception as ex:
+        except (Exception, sqlite3.OperationalError) as ex:
             write_log(user_id=self.user_id, func_name=self.db_update_add_sum.__name__, text=self.err_text + str(ex))
             bot.send_message(chat_id=self.message.chat.id, text=self.err_text + str(ex))
 
